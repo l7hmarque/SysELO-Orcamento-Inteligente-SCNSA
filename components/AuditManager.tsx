@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Upload, AlertTriangle, Check, X, FileSpreadsheet, Loader2, Trash2, ArrowRight, AlertCircle } from 'lucide-react';
 import { parseExcelFile } from '../utils/excelImport';
 import { auditImportedData } from '../services/geminiService';
-import { BudgetItem, ExpenseType } from '../types';
+import { BudgetItem } from '../types';
 
 interface Props {
     onImportConfirmed: (items: BudgetItem[]) => void;

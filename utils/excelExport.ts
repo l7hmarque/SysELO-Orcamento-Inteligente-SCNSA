@@ -21,23 +21,20 @@ export const generateSpreadsheet = (items: BudgetItem[], hrItems: HRItem[], titl
   // Loop through rubrics
   Object.keys(groupedItems).sort().forEach(rubricTitle => {
     rows.push([rubricTitle.toUpperCase()]);
-    rows.push(['Item', 'Tipo', 'Prioridade', 'Valor Unit.', 'Qtd', 'Freq. (Meses)', 'TOTAL ANUAL']);
+    // REMOVED 'Tipo' and 'Prioridade'
+    rows.push(['Item', 'Valor Unit.', 'Qtd', 'Freq. (Meses)', 'TOTAL ANUAL']);
     
-    // Header style row index (approximation for visual, xlsx style not fully supported in basic version but structure is key)
-
-    let startRow = rows.length + 1; // 1-based index where data starts for this block
+    let startRow = rows.length + 1; 
     
     groupedItems[rubricTitle].forEach(item => {
       const r = rows.length + 1; // Current row 1-based
       
       rows.push([
         item.name,
-        item.type === 'Recorrente (Mensal)' ? 'Mensal' : 'Único',
-        item.priority,
         { v: item.unitValue, t: 'n', z: '"R$ "#,##0.00' },
         { v: item.quantity, t: 'n' },
         { v: item.frequency, t: 'n' },
-        { f: `D${r}*E${r}*F${r}`, t: 'n', z: '"R$ "#,##0.00' } // Formula: Unit * Qty * Freq
+        { f: `B${r}*C${r}*D${r}`, t: 'n', z: '"R$ "#,##0.00' } // Formula: Unit * Qty * Freq
       ]);
     });
     
@@ -45,19 +42,14 @@ export const generateSpreadsheet = (items: BudgetItem[], hrItems: HRItem[], titl
     // Subtotal
     rows.push([
       `TOTAL ${rubricTitle}`, 
-      '', '', '', '', '', 
-      { f: `SUM(G${startRow}:G${endRow})`, t: 'n', z: '"R$ "#,##0.00' }
+      '', '', '', 
+      { f: `SUM(E${startRow}:E${endRow})`, t: 'n', z: '"R$ "#,##0.00' }
     ]);
     rows.push([]); // Spacer
   });
 
-  // Grand Total for Goods
-  // We can't easily sum disparate ranges without named ranges or knowing all blocks, 
-  // but users usually rely on the rubric subtotals. 
-  // We could add a Grand Total at the very bottom if needed.
-
   const goodsWorksheet = XLSX.utils.aoa_to_sheet(rows);
-  goodsWorksheet['!cols'] = [{wch:40}, {wch:15}, {wch:10}, {wch:15}, {wch:10}, {wch:10}, {wch:20}];
+  goodsWorksheet['!cols'] = [{wch:40}, {wch:15}, {wch:10}, {wch:15}, {wch:20}];
   XLSX.utils.book_append_sheet(workbook, goodsWorksheet, "Bens e Serviços");
 
 

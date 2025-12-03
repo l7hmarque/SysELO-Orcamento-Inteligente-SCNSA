@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { BudgetItem, Rubric, ReductionSuggestion, PARANA_RUBRICS, ImportResult, ExpenseType } from '../types';
+import { BudgetItem, Rubric, ReductionSuggestion, PARANA_RUBRICS, ImportResult } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
@@ -133,15 +133,13 @@ export const analyzeBudgetReduction = async (items: BudgetItem[], targetReductio
       id: item.id,
       name: item.name,
       rubric: item.rubricDesc,
-      priority: item.priority,
       annualTotal: item.unitValue * item.quantity * item.frequency
     }));
 
     const prompt = `
       You are a rigorous financial controller for a social assistance program (SCFV).
       We need to reduce the total budget by approximately ${targetReductionPercent}%.
-      Analyze the following items. Prioritize cutting "Baixa" priority items or non-essential "Material de Consumo".
-      Protect "Alta" priority items unless necessary.
+      Analyze the following items. Prioritize cutting non-essential "Material de Consumo".
       
       Items: ${JSON.stringify(budgetSummary)}
 
@@ -234,8 +232,6 @@ export const auditImportedData = async (rawData: any[]): Promise<ImportResult> =
                     unitValue: i.unitValue || 0,
                     quantity: i.quantity || 1,
                     frequency: 12,
-                    type: ExpenseType.RECURRING,
-                    priority: 'Média',
                     rubricCode: rubric.code,
                     rubricDesc: rubric.description
                 };

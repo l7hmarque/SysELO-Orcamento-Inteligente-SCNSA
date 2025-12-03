@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { BudgetItem, ExpenseType, PARANA_RUBRICS, Rubric } from '../types';
+import { BudgetItem, PARANA_RUBRICS, Rubric } from '../types';
 import { Plus, Trash2, AlertTriangle, Search, DollarSign, Loader2, ArrowRight, Package, Wrench, Monitor, Clipboard, X, Check, ListPlus, Sparkles, AlertCircle } from 'lucide-react';
 import { validateRubricContext, suggestPrice } from '../services/geminiService';
 
@@ -22,8 +22,7 @@ interface BulkItem {
     name: string;
     quantity: string;
     unitValue: string;
-    type: ExpenseType;
-    priority: 'Baixa'|'Média'|'Alta';
+    frequency: string;
     isSuggesting?: boolean;
 }
 
@@ -56,8 +55,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
   const [itemName, setItemName] = useState('');
   const [unitValue, setUnitValue] = useState('');
   const [quantity, setQuantity] = useState('1');
-  const [type, setType] = useState<ExpenseType>(ExpenseType.RECURRING);
-  const [priority, setPriority] = useState<'Baixa'|'Média'|'Alta'>('Média');
+  const [frequency, setFrequency] = useState('12');
   
   // AI State
   const [validationWarning, setValidationWarning] = useState<{show: boolean, reason?: string, suggested?: Rubric} | null>(null);
@@ -94,9 +92,9 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
   const agilePreviewTotal = useMemo(() => {
       const q = parseFloat(quantity.replace(',', '.')) || 0;
       const v = parseCurrency(unitValue);
-      const freq = type === ExpenseType.RECURRING ? 12 : 1;
+      const freq = parseInt(frequency) || 1;
       return q * v * freq;
-  }, [quantity, unitValue, type]);
+  }, [quantity, unitValue, frequency]);
 
   const getRubricCount = (code: string) => items.filter(i => i.rubricCode === code).length;
 
@@ -167,8 +165,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
               name,
               quantity: qty,
               unitValue: val,
-              type: ExpenseType.RECURRING,
-              priority: 'Média'
+              frequency: '12'
           };
       });
   };
@@ -264,11 +261,9 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                 name: b.name,
                 rubricCode: activeRubric.code,
                 rubricDesc: activeRubric.description,
-                type: b.type,
                 unitValue: rawVal,
                 quantity: parseFloat(b.quantity.replace(',', '.')),
-                frequency: b.type === ExpenseType.RECURRING ? 12 : 1,
-                priority: b.priority
+                frequency: parseInt(b.frequency) || 1
              });
              count++;
           }
@@ -296,19 +291,17 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
       name: itemName,
       rubricCode: rubricToUse.code,
       rubricDesc: rubricToUse.description,
-      type,
       unitValue: parseCurrency(unitValue),
       quantity: parseFloat(quantity.replace(',', '.')),
-      frequency: type === ExpenseType.RECURRING ? 12 : 1,
-      priority
+      frequency: parseInt(frequency) || 12
     };
     onAdd(newItem);
     setItemName('');
     setUnitValue('');
     setQuantity('1');
+    setFrequency('12');
     setSuggestedPrice(null);
     setValidationWarning(null);
-    setPriority('Média');
     if (overrideRubric) {
         const group = RUBRIC_GROUPS.find(g => g.prefixes.some(p => overrideRubric.code.startsWith(p)));
         if (group) setActiveGroupId(group.id);
@@ -414,7 +407,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
         {bulkItems.length === 0 ? (
             // STANDARD SINGLE INPUT MODE
             <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div className="md:col-span-4 relative">
+                <div className="md:col-span-5 relative">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Descrição do Item</label>
                     <input 
                         ref={nameRef}
@@ -460,29 +453,24 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Recorrência</label>
-                    <select 
-                        value={type} onChange={e => setType(e.target.value as ExpenseType)}
-                        className="w-full border-slate-200 bg-slate-50 rounded-lg text-xs shadow-sm h-10 focus:ring-2 focus:ring-red-500 text-slate-700"
-                    >
-                        <option value={ExpenseType.RECURRING}>Mensal (x12)</option>
-                        <option value={ExpenseType.ONE_OFF}>Único (x1)</option>
-                    </select>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Freq. (Meses)</label>
+                    <div className="flex gap-1">
+                        <input 
+                            type="number"
+                            min="1"
+                            max="60"
+                            value={frequency} 
+                            onChange={e => setFrequency(e.target.value)}
+                            className="w-full border-slate-200 bg-slate-50 rounded-lg text-sm shadow-sm focus:ring-2 focus:ring-red-500 focus:bg-white h-10 px-3 text-center text-slate-700"
+                        />
+                        <div className="flex flex-col gap-0.5">
+                            <button onClick={() => setFrequency('12')} className="bg-slate-100 hover:bg-slate-200 text-[8px] px-1 rounded text-slate-600 font-bold" title="Mensal (12x)">12x</button>
+                            <button onClick={() => setFrequency('1')} className="bg-slate-100 hover:bg-slate-200 text-[8px] px-1 rounded text-slate-600 font-bold" title="Único (1x)">1x</button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="md:col-span-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Prioridade</label>
-                    <select 
-                        value={priority} onChange={e => setPriority(e.target.value as any)}
-                        className="w-full border-slate-200 bg-slate-50 rounded-lg text-xs shadow-sm h-10 focus:ring-2 focus:ring-red-500 text-slate-700"
-                    >
-                        <option value="Média">Média</option>
-                        <option value="Alta">Alta</option>
-                        <option value="Baixa">Baixa</option>
-                    </select>
-                </div>
-
-                <div className="md:col-span-1">
                      <div className="hidden md:flex flex-col items-center justify-center mb-1">
                         <span className="text-[8px] uppercase text-slate-400 font-bold">Total</span>
                         <span className="text-[10px] text-red-600 font-bold">{formatCurrency(agilePreviewTotal)}</span>
@@ -502,24 +490,23 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                 <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-hide border rounded-lg border-blue-200 shadow-sm bg-white">
                     {/* Header */}
                     <div className="sticky top-0 bg-blue-50/90 backdrop-blur-sm z-10 grid grid-cols-12 gap-4 px-4 py-2 text-[10px] font-bold text-slate-600 uppercase tracking-wider border-b border-blue-100">
-                        <div className="col-span-4">Descrição</div>
-                        <div className="col-span-2">Tipo</div>
-                        <div className="col-span-2">Prioridade</div>
+                        <div className="col-span-5">Descrição</div>
+                        <div className="col-span-2 text-center">Freq. (Meses)</div>
                         <div className="col-span-1 text-center">Qtd</div>
                         <div className="col-span-2 text-right">Valor (R$)</div>
-                        <div className="col-span-1 text-right">Total</div>
+                        <div className="col-span-2 text-right">Total</div>
                     </div>
                     
                     <div className="divide-y divide-slate-100">
                         {bulkItems.map((item, idx) => {
                             const rawQ = parseFloat(item.quantity.replace(',', '.')) || 0;
                             const rawV = parseCurrency(item.unitValue);
-                            const freq = item.type === ExpenseType.RECURRING ? 12 : 1;
+                            const freq = parseInt(item.frequency) || 1;
                             const rowTotal = rawQ * rawV * freq;
 
                             return (
                             <div key={item.tempId} className="grid grid-cols-12 gap-4 items-center px-4 py-2 hover:bg-slate-50 transition-colors group">
-                                <div className="col-span-4">
+                                <div className="col-span-5">
                                     <input 
                                         value={item.name} 
                                         onChange={e => updateBulkItem(item.tempId, 'name', e.target.value)}
@@ -528,25 +515,12 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                                     />
                                 </div>
                                 <div className="col-span-2">
-                                    <select 
-                                        value={item.type} 
-                                        onChange={e => updateBulkItem(item.tempId, 'type', e.target.value)}
-                                        className="w-full bg-transparent border-none text-[10px] p-0 text-slate-600 focus:ring-0 cursor-pointer hover:text-blue-600"
-                                    >
-                                        <option value={ExpenseType.RECURRING}>Mensal</option>
-                                        <option value={ExpenseType.ONE_OFF}>Único</option>
-                                    </select>
-                                </div>
-                                <div className="col-span-2">
-                                    <select 
-                                        value={item.priority} 
-                                        onChange={e => updateBulkItem(item.tempId, 'priority', e.target.value)}
-                                        className={`w-full bg-transparent border-none text-[10px] p-0 focus:ring-0 cursor-pointer font-bold ${item.priority === 'Alta' ? 'text-red-500' : item.priority === 'Baixa' ? 'text-green-500' : 'text-slate-500'}`}
-                                    >
-                                        <option value="Baixa">Baixa</option>
-                                        <option value="Média">Média</option>
-                                        <option value="Alta">Alta</option>
-                                    </select>
+                                     <input 
+                                        type="number"
+                                        value={item.frequency} 
+                                        onChange={e => updateBulkItem(item.tempId, 'frequency', e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded text-xs text-center py-1 focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all text-slate-700"
+                                    />
                                 </div>
                                 <div className="col-span-1">
                                     <input 
@@ -570,7 +544,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                                         {item.isSuggesting ? <Loader2 size={12} className="animate-spin text-purple-500"/> : <Sparkles size={12}/>}
                                     </button>
                                 </div>
-                                <div className="col-span-1 text-right flex items-center justify-end gap-2">
+                                <div className="col-span-2 text-right flex items-center justify-end gap-2">
                                     <span className="text-[10px] font-bold text-slate-600">{formatCurrency(rowTotal)}</span>
                                     <button onClick={() => removeBulkItem(item.tempId)} className="text-slate-200 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
                                 </div>
@@ -581,7 +555,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                 
                 <div className="flex justify-between items-center mt-4">
                     <div className="text-xs text-blue-600 flex items-center gap-1 bg-blue-100 px-2 py-1 rounded">
-                         <AlertCircle size={12} /> Verifique os tipos e prioridades antes de salvar.
+                         <AlertCircle size={12} /> Verifique a frequência (meses) antes de salvar.
                     </div>
                     <div className="flex gap-3">
                         <button onClick={() => setBulkItems([])} className="text-xs text-slate-400 hover:text-slate-600 font-bold px-3">Cancelar</button>
@@ -639,8 +613,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
              <thead className="bg-slate-50 text-xs font-bold text-slate-600 uppercase tracking-wider">
                  <tr>
                      <th className="px-5 py-3">Item</th>
-                     <th className="px-5 py-3">Tipo</th>
-                     <th className="px-5 py-3 text-center">Prioridade</th>
+                     <th className="px-5 py-3 text-center">Freq. (Meses)</th>
                      <th className="px-5 py-3 text-right">Unitário</th>
                      <th className="px-5 py-3 text-center">Qtd</th>
                      <th className="px-5 py-3 text-right">Total Anual</th>
@@ -651,18 +624,13 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                  {currentRubricItems.map(item => (
                      <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                          <td className="px-5 py-3 font-medium text-slate-700">{item.name}</td>
-                         <td className="px-5 py-3">
-                             <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide ${item.type === ExpenseType.RECURRING ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'}`}>
-                                 {item.type === ExpenseType.RECURRING ? 'Mensal' : 'Único'}
+                         <td className="px-5 py-3 text-center">
+                             <span className="px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-bold">
+                                 {item.frequency}x
                              </span>
                          </td>
-                         <td className="px-5 py-3 text-center">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.priority === 'Alta' ? 'bg-red-100 text-red-700' : item.priority === 'Baixa' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
-                                {item.priority}
-                            </span>
-                         </td>
                          <td className="px-5 py-3 text-right text-slate-600">{formatCurrency(item.unitValue)}</td>
-                         <td className="px-5 py-3 text-center font-mono text-slate-500">{item.quantity} <span className="text-[10px] text-slate-400">x{item.frequency}</span></td>
+                         <td className="px-5 py-3 text-center font-mono text-slate-500">{item.quantity}</td>
                          <td className="px-5 py-3 text-right font-bold text-slate-900 bg-slate-50/50">
                              {formatCurrency(item.unitValue * item.quantity * item.frequency)}
                          </td>
@@ -674,7 +642,7 @@ export const GoodsManager: React.FC<Props> = ({ items, onAdd, onUpdate, onDelete
                      </tr>
                  ))}
                  {currentRubricItems.length === 0 && (
-                    <tr><td colSpan={7} className="p-8 text-center text-slate-400 italic">Nenhum item encontrado nesta rubrica.</td></tr>
+                    <tr><td colSpan={6} className="p-8 text-center text-slate-400 italic">Nenhum item encontrado nesta rubrica.</td></tr>
                  )}
              </tbody>
          </table>

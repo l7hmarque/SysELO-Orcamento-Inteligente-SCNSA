@@ -1,7 +1,3 @@
-export enum ExpenseType {
-  RECURRING = 'Recorrente (Mensal)',
-  ONE_OFF = 'Pontual (Único)',
-}
 
 export interface Rubric {
   code: string;
@@ -14,11 +10,9 @@ export interface BudgetItem {
   name: string;
   rubricCode: string; 
   rubricDesc: string; 
-  type: ExpenseType;
   unitValue: number;
   quantity: number; 
-  frequency: number; 
-  priority: 'Baixa' | 'Média' | 'Alta';
+  frequency: number; // Replaces Type
   justification?: string;
 }
 
